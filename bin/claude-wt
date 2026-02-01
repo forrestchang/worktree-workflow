@@ -127,8 +127,14 @@ else
     echo "Starting Claude Code (safe mode)..."
 fi
 
+# Disable set -e before running claude to prevent shell exit when sourced
+set +e
+
 if [ -n "$INITIAL_PROMPT" ]; then
     $CLAUDE_CMD "$INITIAL_PROMPT"
 else
     $CLAUDE_CMD
 fi
+
+# Restore set -e behavior for any subsequent commands
+set -e
