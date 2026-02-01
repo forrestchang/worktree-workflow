@@ -1,0 +1,130 @@
+#!/bin/bash
+# claude-wt - Create a git worktree and start Claude Code
+#
+# Usage:
+#   claude-wt [options] [branch-name] [initial-prompt]
+#
+# Options:
+#   --safe       Run Claude Code in safe mode (with permission prompts)
+#   --dangerous  Run Claude Code in dangerous mode (skip permission prompts, default)
+#
+# Examples:
+#   claude-wt                              # Creates wt-<timestamp>, dangerous mode
+#   claude-wt feature-auth                 # Creates feature-auth branch
+#   claude-wt --safe feature-auth          # Creates branch in safe mode
+#   claude-wt feature-auth "Add login"     # Creates branch and sends initial prompt
+#
+# Environment Variables:
+#   CLAUDE_WT_WORKTREES_DIR - Custom worktrees directory (default: ../worktrees relative to repo)
+#
+# Installation:
+#   1. Make executable: chmod +x /path/to/claude-wt
+#   2. Add alias to ~/.zshrc or ~/.bashrc:
+#      alias claude-wt='source /path/to/claude-wt'
+#
+# Note: Must use 'source' to allow cd to work in current shell
+
+set -e
+
+# Parse options
+DANGEROUS_MODE=true
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --safe)
+            DANGEROUS_MODE=false
+            shift
+            ;;
+        --dangerous)
+            DANGEROUS_MODE=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            return 1 2>/dev/null || exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Get repo info
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+    echo "Error: Not in a git repository"
+    return 1 2>/dev/null || exit 1
+fi
+
+REPO_NAME=$(basename "$REPO_ROOT")
+TIMESTAMP=$(date +%s)
+
+# Detect default branch (main, master, or other)
+detect_default_branch() {
+    # Try to get default branch from remote
+    local default_branch
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+    if [ -z "$default_branch" ]; then
+        # Fallback: check if main or master exists
+        if git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null; then
+            default_branch="main"
+        elif git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null; then
+            default_branch="master"
+        else
+            # Last resort: use current branch
+            default_branch=$(git branch --show-current)
+        fi
+    fi
+
+    echo "$default_branch"
+}
+
+DEFAULT_BRANCH=$(detect_default_branch)
+
+# Branch name: use argument or generate temporary name
+BRANCH_NAME="${1:-wt-$TIMESTAMP}"
+
+# Worktree path: configurable or default to ../worktrees/<repo-name>-<branch-name>
+if [ -n "$CLAUDE_WT_WORKTREES_DIR" ]; then
+    WORKTREES_DIR="$CLAUDE_WT_WORKTREES_DIR"
+else
+    WORKTREES_DIR="$(dirname "$REPO_ROOT")/worktrees"
+fi
+WORKTREE_PATH="$WORKTREES_DIR/${REPO_NAME}-${BRANCH_NAME}"
+
+# Create worktrees directory if needed
+mkdir -p "$WORKTREES_DIR"
+
+# Fetch latest from default branch
+echo "Fetching origin/$DEFAULT_BRANCH..."
+git fetch origin "$DEFAULT_BRANCH"
+
+# Create worktree from origin/<default-branch>
+echo "Creating worktree at $WORKTREE_PATH..."
+git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "origin/$DEFAULT_BRANCH"
+
+# Change to worktree directory
+cd "$WORKTREE_PATH"
+echo "Changed to $WORKTREE_PATH"
+
+# Build Claude command
+CLAUDE_CMD="claude"
+if [ "$DANGEROUS_MODE" = "true" ]; then
+    CLAUDE_CMD="$CLAUDE_CMD --dangerously-skip-permissions"
+fi
+
+# Determine initial prompt
+INITIAL_PROMPT="${2:-}"
+
+# Start Claude Code
+if [ "$DANGEROUS_MODE" = "true" ]; then
+    echo "Starting Claude Code (dangerous mode)..."
+else
+    echo "Starting Claude Code (safe mode)..."
+fi
+
+if [ -n "$INITIAL_PROMPT" ]; then
+    $CLAUDE_CMD "$INITIAL_PROMPT"
+else
+    $CLAUDE_CMD
+fi
