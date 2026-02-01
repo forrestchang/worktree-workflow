@@ -84,13 +84,17 @@ DEFAULT_BRANCH=$(detect_default_branch)
 # Branch name: use argument or generate temporary name
 BRANCH_NAME="${1:-wt-$TIMESTAMP}"
 
+# Convert slashes in branch name to dashes for directory name
+# e.g., "jack/test-branch" -> "jack-test-branch"
+DIR_SAFE_BRANCH="${BRANCH_NAME//\//-}"
+
 # Worktree path: configurable or default to ../worktrees/<repo-name>-<branch-name>
 if [ -n "$CLAUDE_WT_WORKTREES_DIR" ]; then
     WORKTREES_DIR="$CLAUDE_WT_WORKTREES_DIR"
 else
     WORKTREES_DIR="$(dirname "$REPO_ROOT")/worktrees"
 fi
-WORKTREE_PATH="$WORKTREES_DIR/${REPO_NAME}-${BRANCH_NAME}"
+WORKTREE_PATH="$WORKTREES_DIR/${REPO_NAME}-${DIR_SAFE_BRANCH}"
 
 # Create worktrees directory if needed
 mkdir -p "$WORKTREES_DIR"

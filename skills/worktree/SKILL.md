@@ -55,8 +55,11 @@ Example: If working in `/home/user/projects/my-app` on branch `feature-auth`, th
    ```bash
    # Define paths
    branch_name="<first-argument>"
+   # Convert slashes in branch name to dashes for directory name
+   # e.g., "feature/user-auth" -> "feature-user-auth"
+   dir_safe_branch="${branch_name//\//-}"
    worktrees_dir="$(dirname "$repo_root")/worktrees"
-   worktree_path="$worktrees_dir/${repo_name}-${branch_name}"
+   worktree_path="$worktrees_dir/${repo_name}-${dir_safe_branch}"
 
    # Create worktrees directory if needed
    mkdir -p "$worktrees_dir"
@@ -127,13 +130,16 @@ When the user wants to remove a worktree:
 # Get current repo info
 repo_root=$(git rev-parse --show-toplevel)
 repo_name=$(basename "$repo_root")
+branch_name="<branch-name>"
+# Convert slashes in branch name to dashes for directory name
+dir_safe_branch="${branch_name//\//-}"
 worktrees_dir="$(dirname "$repo_root")/worktrees"
 
 # Remove a specific worktree
-git worktree remove "$worktrees_dir/${repo_name}-<branch-name>"
+git worktree remove "$worktrees_dir/${repo_name}-${dir_safe_branch}"
 
 # Or manually delete and prune
-rm -rf "$worktrees_dir/${repo_name}-<branch-name>"
+rm -rf "$worktrees_dir/${repo_name}-${dir_safe_branch}"
 git worktree prune
 
 # List remaining worktrees

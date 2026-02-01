@@ -51,8 +51,10 @@ If in a worktree, offer commands to clean up:
 repo_root=$(git rev-parse --show-toplevel)
 repo_name=$(basename "$repo_root")
 branch_name=$(git branch --show-current)
+# Convert slashes in branch name to dashes for directory name
+dir_safe_branch="${branch_name//\//-}"
 worktrees_dir="$(dirname "$repo_root")/worktrees"
-worktree_path="$worktrees_dir/${repo_name}-${branch_name}"
+worktree_path="$worktrees_dir/${repo_name}-${dir_safe_branch}"
 
 # From main repo, remove the worktree
 cd <main-repo-path>
