@@ -13,10 +13,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Helper function to safely install a file
+# Helper function to install a file
 # Usage: safe_install <source> <dest> <type>
 # type: "symlink" or "copy"
 safe_install() {
@@ -24,19 +23,9 @@ safe_install() {
     local dest="$2"
     local type="$3"
 
+    # Remove existing file/symlink/directory if present
     if [ -e "$dest" ] || [ -L "$dest" ]; then
-        if [ -L "$dest" ]; then
-            # It's a symlink, remove it
-            rm "$dest"
-        elif [ -f "$dest" ]; then
-            # It's a regular file, backup and remove
-            echo -e "${YELLOW}(backing up existing file)${NC} "
-            mv "$dest" "${dest}.backup.$(date +%s)"
-        elif [ -d "$dest" ]; then
-            # It's a directory, backup and remove
-            echo -e "${YELLOW}(backing up existing directory)${NC} "
-            mv "$dest" "${dest}.backup.$(date +%s)"
-        fi
+        rm -rf "$dest"
     fi
 
     if [ "$type" = "symlink" ]; then
